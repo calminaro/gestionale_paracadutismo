@@ -19,17 +19,69 @@ app.config["SECRET_KEY"] = secrets.token_hex()
 db = SQLAlchemy(app)
 
 login_manager = LoginManager(app)
-login_manager.login_view = "login"
+login_manager.login_view = "index"
 
 # Classi Database
 class User(db.Model, UserMixin):
+    __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(128), nullable=False, unique=True)
     password = db.Column(db.String(128), nullable=False)
-    livello = db.Column(db.JSON, nullable=False)
+    permessi = db.Column(db.JSON, nullable=False)
+
+class Paracadutista(db.Model):
+    __tablename__ = "paracadutisti"
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(128), nullable=False)
+    cognome = db.Column(db.String(128), nullable=False)
+    licenza = db.Column(db.JSON, nullable=False)
+    visita = db.Column(db.JSON, nullable=False)
+    cs_dl = db.Column(db.JSON, nullable=False)
+    videoman = db.Column(db.JSON, nullable=False)
+    ip_aff = db.Column(db.JSON, nullable=False)
+    ip_tandem = db.Column(db.JSON, nullable=False)
+
+class Aereo(db.Model):
+    __tablename__ = "aerei"
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(128), nullable=False)
+    posti = db.Column(db.Integer, nullable=False)
+
+class Pilota(db.Model):
+    __tablename__ = "piloti"
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(128), nullable=False)
+    cognome = db.Column(db.String(128), nullable=False)
+    licenza = db.Column(db.JSON, nullable=False)
+    visita = db.Column(db.JSON, nullable=False)
+
+class Disciplina(db.Model):
+    __tablename__ = "discipline"
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(128), nullable=False)
+
+class Formazione(db.Model):
+    __tablename__ = "formazioni"
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(128), nullable=False)
+
+class Giornata(db.Model):
+    __tablename__ = "giornate"
+    id = db.Column(db.Integer, primary_key=True)
+    data = db.Column(db.String(128), nullable=False)
+    ip_giornata = db.Column(db.Integer, nullable=False)
+    decolli = db.Column(db.JSON, nullable=False)
+
+class Decollo(db.Model):
+    __tablename__ = "decolli"
+    id = db.Column(db.Integer, primary_key=True)
+    tandem = db.Column(db.JSON, nullable=False)
+    aff = db.Column(db.JSON, nullable=False)
+    formazioni = db.Column(db.JSON, nullable=False)
+    paracadutisti = db.Column(db.JSON, nullable=False)
 
 with app.app_context():
-    #db.create_all()
+    db.create_all()
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -38,7 +90,6 @@ def load_user(user_id):
 @app.route("/")
 def index():
     return render_template("index.html")
-
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -65,7 +116,7 @@ def logout():
 
 @app.errorhandler(404)
 def page_not_found(e):
-    return return jsonify({"status": "error", "response": "not_found"}), 404
+    return jsonify({"status": "error", "response": "not_found"}), 404
 '''
 @app.errorhandler(405)
 def internal_error(e):
