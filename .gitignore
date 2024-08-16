@@ -1,5 +1,5 @@
 credenziali.json
 *.db
 __pycache__
-.env
 *.csv
+venv
