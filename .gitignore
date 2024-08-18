@@ -1,4 +1,5 @@
-credenziali.json
+*.json
+*.conf
 *.db
 __pycache__
 *.csv

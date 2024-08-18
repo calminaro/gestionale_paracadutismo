@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block head %}
+
+<title>Gestionale Paracadutismo</title>
+
+{% endblock %}
+
+{% block corpo %}
+<script src="/static/manifest.js"></script>
+
+<div x-data="{ menu: true, manifest_oggi: false, manifest_vecchio: false }">
+
+<div class="col my-5" x-show="menu">
+    <div class="row">
+        <button class="btn" @click="manifest_oggi = true; menu = false">
+        <div class="shadow-sm p-3 mx-5 mb-3 text-center bg-body-tertiary rounded">
+            <h3>Manifest di oggi</h3>
+            <p>Clicca qui per avviare o modificare la giornata di oggi</p>
+        </div>
+        </button>
+    </div>
+    <div class="row">
+        <button class="btn" @click="manifest_vecchio = true; menu = false">
+        <div class="shadow-sm p-3 mx-5 mb-3 text-center bg-body-tertiary rounded">
+            <p>Modifica giornate di attività passato</p>
+        </div>
+        </button>
+    </div>
+</div>
+
+<div id="manifest_oggi" x-show="manifest_oggi">
+    <h4 class="text-center">Manifest del <span x-text="data_oggi()"></span></h4>
+    <button type="button" class="btn btn-sm btn-primary" @click="manifest_oggi = false; menu = true"><span class="material-symbols-outlined">arrow_back</span></button>
+</div>
+
+</div>
+
+{% endblock %}

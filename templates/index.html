@@ -8,15 +8,42 @@
     <title>Gestionale Paracadutismo</title>
   </head>
   <body>
+    <script src="/static/index.js"></script>
     <header>
       <div class="shadow-sm p-3 mb-3 bg-body-tertiary rounded">
         <h1 class="text-center"><strong>Gestionale Paracadutismo</strong></h1>
       </div>
     </header>
-    <main>
-
+    <main class="d-flex justify-content-center align-items-center vh-100">
+    <button type="button" class="btn btn-lg btn-primary" data-bs-toggle="modal" data-bs-target="#loginModal">CLICCA QUI PER ACCEDERE</button>
     </main>
     <footer></footer>
+
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h1 class="modal-title fs-5" id="loginModalLabel">Login</h1>
+          </div>
+          <div class="modal-body">
+            <form x-data="LoginForm()" @submit.prevent="submitForm">
+              <div class="mb-3">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" class="form-control" id="username" x-model="formData.username">
+              </div>
+              <div class="mb-3">
+                <label for="passwd" class="form-label">Password</label>
+                <input type="password" class="form-control" id="passwd" x-model="formData.passwd">
+              </div>
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+              <button type="submit" class="btn btn-primary" :disabled="formLoading" x-text="loginButtonText"></button>
+              <p x-text="formMessage"></p>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
   </body>
 </html>
