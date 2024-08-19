@@ -13,7 +13,7 @@
     <script src="/static/sidebar.js"></script>
     <script src="/static/impostazioni.js"></script>
     <div class="d-flex flex-column flex-shrink-0 p-3" style="width: 280px;" x-data="sidebarData()" id="sidebar">
-      <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-decoration-none">
+      <a class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-decoration-none">
         <strong><span class="fs-4">Impostazioni</span></strong>
       </a>
       <hr>
@@ -278,26 +278,26 @@
   </div>
 
   <div id="formaz" x-show="formazioni" class="mt-2" x-data="groups()">
-  <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#aereiModal" data-bs-paraid="">Aggiungi</button>
-  <button type="button" class="btn btn-sm btn-primary" @click=refreshAerei() id="refresh_aerei"><span class="material-symbols-outlined">refresh</span></button>
+  <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#formazioniModal" data-bs-paraid="">Aggiungi</button>
+  <button type="button" class="btn btn-sm btn-primary" @click=refreshFormazioni() id="refresh_formazioni"><span class="material-symbols-outlined">refresh</span></button>
   <table class="table table-responsive">
     <thead>
       <tr>
         <th scope="col">ID</th>
         <th scope="col">Nome</th>
-        <th scope="col">Posti</th>
+        <th scope="col">Disciplina</th>
         <th scope="col"></th>
       </tr>
     </thead>
     <tbody>
-        <template x-for="i in elenco_aerei.response">
+        <template x-for="i in elenco_formazioni.response">
           <tr>
             <th scope="row" x-text="i.id"></th>
             <td x-text="i.nome"></td>
-            <td x-text="i.posti"></td>
+            <td x-text="i.disciplina"></td>
             <td>
-            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#aereiModal" x-bind:data-bs-aereoid="i.id"><span class="material-symbols-outlined">edit</span></button>
-            <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#aereiDeleteModal" x-bind:data-bs-aereoid="i.id"><span class="material-symbols-outlined">delete</span></button>
+            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#formazioniModal" x-bind:data-bs-formazioneid="i.id"><span class="material-symbols-outlined">edit</span></button>
+            <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#formazioniDeleteModal" x-bind:data-bs-formazioneid="i.id"><span class="material-symbols-outlined">delete</span></button>
             </td>
           </tr>
         </template>
@@ -509,23 +509,24 @@
               <div class="mb-3">
                 <label for="nome" class="form-label">Nome</label>
                 <input type="text" class="form-control" id="nome" x-model="formData.nome">
-                <div class="mb-3 row">
-                  <div class="mb-3 form-check col">
-                    <input type="radio" class="form-check-input" id="vincolato" value="vincolato" x-model="formData.tipo">
-                    <label class="form-check-label" for="vincolato">Vincolato</label>
-                  </div>
-                  <div class="mb-3 form-check col">
-                    <input type="radio" class="form-check-input" id="orizzontale" value="orizzontale" x-model="formData.tipo">
-                    <label class="form-check-label" for="orizzontale">Orizzonale (caduta libera lenta)</label>
-                  </div>
-                  <div class="mb-3 form-check col">
-                    <input type="radio" class="form-check-input" id="verticale" value="verticale" x-model="formData.tipo">
-                    <label class="form-check-label" for="verticale">Verticale (caduta libera veloce)</label>
-                  </div>
-                  <div class="mb-3 form-check col">
-                    <input type="radio" class="form-check-input" id="wingsuit" value="wingsuit" x-model="formData.tipo">
-                    <label class="form-check-label" for="wingsuit">Tuta Alare</label>
-                  </div>
+              </div>
+              <div class="mb-3 row">
+                <label class="form-label">Tipo di Lancio</label>
+                <div class="mb-3 form-check col">
+                  <input type="radio" class="form-check-input" id="vincolato" value="vincolato" x-model="formData.tipo">
+                  <label class="form-check-label" for="vincolato">Vincolato</label>
+                </div>
+                <div class="mb-3 form-check col">
+                  <input type="radio" class="form-check-input" id="orizzontale" value="orizzontale" x-model="formData.tipo">
+                  <label class="form-check-label" for="orizzontale">Orizzonale (caduta libera lenta)</label>
+                </div>
+                <div class="mb-3 form-check col">
+                  <input type="radio" class="form-check-input" id="verticale" value="verticale" x-model="formData.tipo">
+                  <label class="form-check-label" for="verticale">Verticale (caduta libera veloce)</label>
+                </div>
+                <div class="mb-3 form-check col">
+                  <input type="radio" class="form-check-input" id="wingsuit" value="wingsuit" x-model="formData.tipo">
+                  <label class="form-check-label" for="wingsuit">Tuta Alare</label>
                 </div>
               </div>
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
@@ -553,6 +554,51 @@
       </div>
     </div>
 
+    <div class="modal fade" id="formazioniModal" tabindex="-1" aria-labelledby="formazioniModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h1 class="modal-title fs-5" id="formazioniModalLabel">Formazione</h1>
+          </div>
+          <div class="modal-body mx-2">
+            <form  x-data="formazioniForm()" @submit.prevent="submitForm">
+              <input type="text" class="form-control" hidden id="group_id" x-model="formData.group_id">
+              <div class="mb-3">
+                <label for="nome" class="form-label">Nome</label>
+                <input type="text" class="form-control" id="nome" x-model="formData.nome">
+              </div>
+              <div class="mb-3">
+                <label for="disciplina_lancio" class="form-label">Nome</label>
+                <select class="form-select" id="disciplina_lancio" x-model="formData.disciplina">
+                  <template x-for="i in elenco_discipline" :key="i.id">
+                    <option :value="i.id" x-text="i.nome"></option>
+                  </template>
+                </select>
+              </div>
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+              <button type="submit" class="btn btn-primary" :disabled="formLoading" data-bs-dismiss="modal">Conferma</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="formazioniDeleteModal" tabindex="-1" aria-labelledby="formazioniDeleteModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h1 class="modal-title fs-5" id="formazioniDeleteModalLabel">Elimina Formazione</h1>
+          </div>
+          <div class="modal-body mx-2">
+            <form  x-data="formazioniDeleteForm()" @submit.prevent="submitForm">
+              <input type="text" class="form-control" hidden id="group_id" x-model="formData.group_id">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+              <button type="submit" class="btn btn-danger" :disabled="formLoading" data-bs-dismiss="modal">Elimina</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
   </body>

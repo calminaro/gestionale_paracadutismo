@@ -9,11 +9,11 @@
 {% block corpo %}
 <script src="/static/manifest.js"></script>
 
-<div x-data="{ menu: true, manifest_oggi: false, manifest_vecchio: false }">
+<div x-data="{ menu: true, manifest: false, manifest_vecchio: false }">
 
 <div class="col my-5" x-show="menu">
     <div class="row">
-        <button class="btn" @click="manifest_oggi = true; menu = false">
+        <button class="btn" @click="menu = false; manifest = true; manifest_vecchio = false">
         <div class="shadow-sm p-3 mx-5 mb-3 text-center bg-body-tertiary rounded">
             <h3>Manifest di oggi</h3>
             <p>Clicca qui per avviare o modificare la giornata di oggi</p>
@@ -21,19 +21,136 @@
         </button>
     </div>
     <div class="row">
-        <button class="btn" @click="manifest_vecchio = true; menu = false">
+        <button class="btn" @click="menu = false; manifest = false; manifest_vecchio = true">
         <div class="shadow-sm p-3 mx-5 mb-3 text-center bg-body-tertiary rounded">
-            <p>Modifica giornate di attività passato</p>
+            <p>Modifica giornate di attività passate</p>
         </div>
         </button>
     </div>
 </div>
 
-<div id="manifest_oggi" x-show="manifest_oggi">
-    <h4 class="text-center">Manifest del <span x-text="data_oggi()"></span></h4>
-    <button type="button" class="btn btn-sm btn-primary" @click="manifest_oggi = false; menu = true"><span class="material-symbols-outlined">arrow_back</span></button>
+<div id="manifest" x-show="manifest" x-data="manifestOggi()">
+    <h4 class="text-center">Manifest del <span x-text="new Date(data_oggi()).toLocaleDateString('it-IT')"></span></h4>
+    <template x-if="!manifest_oggi.response">
+        <div>
+        <button type="button" class="btn btn-sm btn-primary" @click="menu = true; manifest = false; manifest_vecchio = false"><span class="material-symbols-outlined">arrow_back</span></button>
+        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#avviaGiornataModal" data-bs-todo="crea" id="avviaGiornataBtn">Avvia Giornata</button>
+        </div>
+    </template>
+    <template x-if="manifest_oggi.response">
+        <div class="row">
+        <div class="col">
+        <button type="button" class="btn btn-sm btn-primary" @click="menu = true; manifest = false; manifest_vecchio = false"><span class="material-symbols-outlined">arrow_back</span></button>
+        <button type="button" class="btn btn-sm btn-primary">Aggiungi Decollo</button>
+        </div>
+        <div class="col text-end">
+        <span class="badge text-bg-secondary border"><span class="material-symbols-outlined">school</span><span x-text="manifest_oggi.response.ip_giornata.nome"></span></span>
+        <span class="badge text-bg-secondary border"><span class="material-symbols-outlined">airlines</span><span x-text="manifest_oggi.response.pilota.nome"></span> - <span x-text="manifest_oggi.response.aereo.nome"></span></span>
+        </div>
+        </div>
+    </template>
 </div>
 
+<div id="manifest_vecchio" x-show="manifest_vecchio" x-data="manifestStorico()">
+    <h4 class="text-center">Giornate effettuate</h4>
+    <button type="button" class="btn btn-sm btn-primary" @click="menu = true; manifest = false; manifest_vecchio = false"><span class="material-symbols-outlined">arrow_back</span></button>
+    <ul class="nav nav-tabs mt-2" id="myTab" role="tablist">
+        <template x-for="(anno, index) in giornate_storico.response.anni" :key="anno">
+            <li class="nav-item">
+                <a
+                    class="nav-link"
+                    :class="{'active': index === 0}"
+                    :id="`tab-${anno}`"
+                    data-bs-toggle="tab"
+                    :href="`#pane-${anno}`"
+                    role="tab"
+                    :aria-controls="`pane-${anno}`"
+                    :aria-selected="index === 0"
+                    x-text="anno">
+                </a>
+            </li>
+        </template>
+    </ul>
+    <div class="tab-content" id="myTabContent">
+        <template x-for="(anno, index) in giornate_storico.response.anni" :key="anno">
+            <div
+                class="tab-pane fade"
+                :class="{'show active': index === 0}"
+                :id="`pane-${anno}`"
+                role="tabpanel"
+                :aria-labelledby="`tab-${anno}`">
+                <table class="table">
+                <thead>
+                    <tr>
+                    <th scope="col">Data</th>
+                    <th scope="col">IP di Giornata</th>
+                    <th scope="col">Pilota</th>
+                    <th scope="col">Aereo</th>
+                    <th scope="col"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="giornata in giornate_storico.response[anno]" :key="giornata.data">
+                        <tr>
+                            <th scope="row" x-text="new Date(giornata.data).toLocaleDateString('it-IT')"></th>
+                            <td x-text="giornata.ip_giornata.nome"></td>
+                            <td x-text="giornata.pilota.nome"></td>
+                            <td x-text="giornata.aereo.nome"></td>
+                            <td>
+                            <a class="btn btn-sm btn-primary" :href="`/manifest/dettaglio/${giornata.id}`"><span class="material-symbols-outlined">edit</span></a>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+                </table>
+            </div>
+        </template>
+    </div>
+</div>
+
+</div>
+
+
+<div class="modal fade" id="avviaGiornataModal" tabindex="-1" aria-labelledby="avviaGiornataModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+        <div class="modal-header">
+        <h1 class="modal-title fs-5" id="avviaGiornataModalLabel">Avvia Giornata</h1>
+        </div>
+        <div class="modal-body mx-2">
+        <form  x-data="avviaGiornataForm()" @submit.prevent="submitForm">
+            <input type="date" class="form-control" hidden id="data" x-model="formData.data">
+            <input type="todo" class="form-control" hidden id="data" x-model="formData.todo">
+            <div class="mb-3">
+            <label for="ip_giornata" class="form-label">IP di Giornata</label>
+            <select class="form-select" id="ip_giornata" x-model="formData.ip_giornata">
+                <template x-for="i in elenco_para" :key="i.id">
+                    <option :value="i.id" x-text="i.nome + ' ' + i.cognome"></option>
+                </template>
+            </select>
+            </div>
+            <div class="mb-3">
+            <label for="pilota" class="form-label">Pilota</label>
+            <select class="form-select" id="pilota" x-model="formData.pilota">
+                <template x-for="i in elenco_piloti" :key="i.id">
+                <option :value="i.id" x-text="i.nome + ' ' + i.cognome"></option>
+                </template>
+            </select>
+            </div>
+            <div class="mb-3">
+            <label for="aereo" class="form-label">Aereo</label>
+            <select class="form-select" id="aereo" x-model="formData.aereo">
+                <template x-for="i in elenco_aerei" :key="i.id">
+                <option :value="i.id" x-text="i.nome"></option>
+                </template>
+            </select>
+            </div>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+            <button type="submit" class="btn btn-primary" :disabled="formLoading" data-bs-dismiss="modal">Conferma</button>
+        </form>
+        </div>
+    </div>
+    </div>
 </div>
 
 {% endblock %}

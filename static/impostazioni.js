@@ -658,3 +658,154 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
+
+// Formazioni
+function groups() {
+    return {
+        elenco_formazioni: '',
+        async init() {
+            await this.refreshFormazioni();
+        },
+        async refreshFormazioni() {
+            let response = await fetch("/formazioni");
+            this.elenco_formazioni = await response.json();
+        }
+    }
+}
+
+function formazioniForm() {
+    return {
+        formData: {
+            group_id: "",
+            nome: "",
+            disciplina: 1,
+        },
+        elenco_discipline: [],
+        formMessage: "",
+        formLoading: false,
+        async loadDisciplines() {
+            const stylesInstance = styles();
+            await stylesInstance.refreshDiscipline();
+            this.elenco_discipline = stylesInstance.elenco_discipline.response;
+        },
+        loadData(id_formazione) {
+            if (!id_formazione) {
+                this.formData.group_id = "";
+                this.formData.nome = "";
+                this.formData.disciplina = 1;
+            } else {
+                fetch(`/formazione/${id_formazione}`)
+                .then(response => response.json())
+                .then(data => {
+                    this.formData.group_id = id_formazione;
+                    this.formData.nome = data.response.nome;
+                    this.formData.disciplina = data.response.disciplina;
+                });
+            }
+        },
+        submitForm() {
+            this.formMessage = "";
+            this.formLoading = true;
+            fetch("/formazioni", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                },
+                body: JSON.stringify(this.formData),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then((data) => {
+                if (data.response == "ok") {
+                    document.getElementById("refresh_formazioni").click();
+                }
+            })
+            .finally(() => {
+                this.formLoading = false;
+            });
+        },
+
+        async init() {
+            // Carica le discipline al momento dell'inizializzazione
+            await this.loadDisciplines();
+        }
+    };
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const disciplineModal = document.getElementById('formazioniModal');
+
+    if (disciplineModal) {
+        disciplineModal.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            const id_formazione = button.getAttribute('data-bs-formazioneid');
+
+            const modalComponent = Alpine.$data(disciplineModal.querySelector('[x-data]'));
+
+            if (modalComponent) {
+                modalComponent.loadData(id_formazione);
+            }
+        });
+    }
+});
+
+function formazioniDeleteForm() {
+    return {
+        formData: {
+            group_id: "",
+        },
+        formMessage: "",
+            formLoading: false,
+                loadData(id_formazione) {
+                    this.formData.group_id = id_formazione;
+                },
+                submitForm() {
+                    this.formMessage = "";
+                    this.formLoading = true;
+                    if (window.confirm("ATTENZIONE: Stai eliminando una formazione, operazione NON reversibile!")) {
+                        fetch("/formazioni", {
+                            method: "DELETE",
+                            headers: {
+                                "Content-Type": "application/json",
+                              Accept: "application/json",
+                            },
+                            body: JSON.stringify(this.formData),
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            return response.json();
+                        })
+                        .then((data) => {
+                            if (data.response == "ok") {
+                                document.getElementById("refresh_formazioni").click();
+                            }
+                        })
+                    };
+                    this.formLoading = false;
+                },
+    };
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const disciplineDeleteModal = document.getElementById('formazioniDeleteModal');
+
+    if (disciplineDeleteModal) {
+        disciplineDeleteModal.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            const id_formazione = button.getAttribute('data-bs-formazioneid');
+
+            const modalComponent = Alpine.$data(disciplineDeleteModal.querySelector('[x-data]'));
+
+            if (modalComponent) {
+                modalComponent.loadData(id_formazione);
+            }
+        });
+    }
+});
