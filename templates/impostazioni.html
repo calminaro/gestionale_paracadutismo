@@ -40,7 +40,7 @@
         </li>
         <li class="nav-item">
           <a class="nav-link" :class="{ 'active': stili }" @click="sys_op = false; utenze = false; para = false; pilot = false; stili = true">
-            <span class="material-symbols-outlined">sports_martial_arts</span> Discipline e Formazioni
+            <span class="material-symbols-outlined">sports_martial_arts</span> Discipline
           </a>
         </li>
       </ul>
@@ -239,17 +239,8 @@
 </div>
 
 <div id="stili" x-show="stili" x-data="{ discipline: true, formazioni: false }">
-  <h4 class="text-center">Discipline e Formazioni</h4>
-  <ul class="nav nav-pills nav-fill">
-    <li class="nav-item">
-      <a class="nav-link" :class="{ 'active': discipline }" @click="discipline = true; formazioni = false">Discipline</a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link" :class="{ 'active': formazioni }" @click="discipline = false; formazioni = true">Formazioni</a>
-    </li>
-  </ul>
+  <h4 class="text-center">Discipline</h4>
 
-  <div id="disciplin" x-show="discipline" class="mt-2" x-data="styles()">
   <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#disciplineModal" data-bs-paraid="">Aggiungi</button>
   <button type="button" class="btn btn-sm btn-primary" @click=refreshDiscipline() id="refresh_discipline"><span class="material-symbols-outlined">refresh</span></button>
   <table class="table table-responsive">
@@ -275,35 +266,6 @@
         </template>
     </tbody>
   </table>
-  </div>
-
-  <div id="formaz" x-show="formazioni" class="mt-2" x-data="groups()">
-  <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#formazioniModal" data-bs-paraid="">Aggiungi</button>
-  <button type="button" class="btn btn-sm btn-primary" @click=refreshFormazioni() id="refresh_formazioni"><span class="material-symbols-outlined">refresh</span></button>
-  <table class="table table-responsive">
-    <thead>
-      <tr>
-        <th scope="col">ID</th>
-        <th scope="col">Nome</th>
-        <th scope="col">Disciplina</th>
-        <th scope="col"></th>
-      </tr>
-    </thead>
-    <tbody>
-        <template x-for="i in elenco_formazioni.response">
-          <tr>
-            <th scope="row" x-text="i.id"></th>
-            <td x-text="i.nome"></td>
-            <td x-text="i.disciplina"></td>
-            <td>
-            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#formazioniModal" x-bind:data-bs-formazioneid="i.id"><span class="material-symbols-outlined">edit</span></button>
-            <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#formazioniDeleteModal" x-bind:data-bs-formazioneid="i.id"><span class="material-symbols-outlined">delete</span></button>
-            </td>
-          </tr>
-        </template>
-    </tbody>
-  </table>
-  </div>
 </div>
 
     </main>
@@ -546,52 +508,6 @@
           <div class="modal-body mx-2">
             <form  x-data="disciplineDeleteForm()" @submit.prevent="submitForm">
               <input type="text" class="form-control" hidden id="style_id" x-model="formData.style_id">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-              <button type="submit" class="btn btn-danger" :disabled="formLoading" data-bs-dismiss="modal">Elimina</button>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="modal fade" id="formazioniModal" tabindex="-1" aria-labelledby="formazioniModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h1 class="modal-title fs-5" id="formazioniModalLabel">Formazione</h1>
-          </div>
-          <div class="modal-body mx-2">
-            <form  x-data="formazioniForm()" @submit.prevent="submitForm">
-              <input type="text" class="form-control" hidden id="group_id" x-model="formData.group_id">
-              <div class="mb-3">
-                <label for="nome" class="form-label">Nome</label>
-                <input type="text" class="form-control" id="nome" x-model="formData.nome">
-              </div>
-              <div class="mb-3">
-                <label for="disciplina_lancio" class="form-label">Nome</label>
-                <select class="form-select" id="disciplina_lancio" x-model="formData.disciplina">
-                  <template x-for="i in elenco_discipline" :key="i.id">
-                    <option :value="i.id" x-text="i.nome"></option>
-                  </template>
-                </select>
-              </div>
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-              <button type="submit" class="btn btn-primary" :disabled="formLoading" data-bs-dismiss="modal">Conferma</button>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="modal fade" id="formazioniDeleteModal" tabindex="-1" aria-labelledby="formazioniDeleteModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h1 class="modal-title fs-5" id="formazioniDeleteModalLabel">Elimina Formazione</h1>
-          </div>
-          <div class="modal-body mx-2">
-            <form  x-data="formazioniDeleteForm()" @submit.prevent="submitForm">
-              <input type="text" class="form-control" hidden id="group_id" x-model="formData.group_id">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
               <button type="submit" class="btn btn-danger" :disabled="formLoading" data-bs-dismiss="modal">Elimina</button>
             </form>

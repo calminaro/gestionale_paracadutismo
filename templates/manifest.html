@@ -9,11 +9,17 @@
 {% block corpo %}
 <script src="/static/manifest.js"></script>
 
-<div x-data="{ menu: true, manifest: false, manifest_vecchio: false }">
+<div x-data="{ menu: true, manifest: false, edit_decollo: false, manifest_vecchio: false }" x-init="
+    const hash = window.location.hash;
+    menu = (hash === '');
+    manifest = (hash === '#manifest');
+    edit_decollo = (hash === '#edit_decollo');
+    manifest_vecchio = (hash === '#manifest_vecchio');
+">
 
 <div class="col my-5" x-show="menu">
     <div class="row">
-        <button class="btn" @click="menu = false; manifest = true; manifest_vecchio = false">
+        <button class="btn" @click="menu = false; manifest = true; edit_decollo: false; manifest_vecchio = false; window.location.hash = '#manifest'">
         <div class="shadow-sm p-3 mx-5 mb-3 text-center bg-body-tertiary rounded">
             <h3>Manifest di oggi</h3>
             <p>Clicca qui per avviare o modificare la giornata di oggi</p>
@@ -21,9 +27,9 @@
         </button>
     </div>
     <div class="row">
-        <button class="btn" @click="menu = false; manifest = false; manifest_vecchio = true">
+        <button class="btn" @click="menu = false; manifest = false; edit_decollo: false; manifest_vecchio = true; window.location.hash = '#manifest_vecchio'">
         <div class="shadow-sm p-3 mx-5 mb-3 text-center bg-body-tertiary rounded">
-            <p>Modifica giornate di attività passate</p>
+            <p>Giornate di attività passate</p>
         </div>
         </button>
     </div>
@@ -32,28 +38,205 @@
 <div id="manifest" x-show="manifest" x-data="manifestOggi()">
     <h4 class="text-center">Manifest del <span x-text="new Date(data_oggi()).toLocaleDateString('it-IT')"></span></h4>
     <template x-if="!manifest_oggi.response">
-        <div>
-        <button type="button" class="btn btn-sm btn-primary" @click="menu = true; manifest = false; manifest_vecchio = false"><span class="material-symbols-outlined">arrow_back</span></button>
+        <div class="my-2">
+        <button type="button" class="btn btn-sm btn-primary" @click="menu = true; manifest = false; edit_decollo = false; manifest_vecchio = false; window.location.hash = ''"><span class="material-symbols-outlined">arrow_back</span></button>
         <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#avviaGiornataModal" data-bs-todo="crea" id="avviaGiornataBtn">Avvia Giornata</button>
         </div>
     </template>
     <template x-if="manifest_oggi.response">
-        <div class="row">
-        <div class="col">
-        <button type="button" class="btn btn-sm btn-primary" @click="menu = true; manifest = false; manifest_vecchio = false"><span class="material-symbols-outlined">arrow_back</span></button>
-        <button type="button" class="btn btn-sm btn-primary">Aggiungi Decollo</button>
-        </div>
-        <div class="col text-end">
-        <span class="badge text-bg-secondary border"><span class="material-symbols-outlined">school</span><span x-text="manifest_oggi.response.ip_giornata.nome"></span></span>
-        <span class="badge text-bg-secondary border"><span class="material-symbols-outlined">airlines</span><span x-text="manifest_oggi.response.pilota.nome"></span> - <span x-text="manifest_oggi.response.aereo.nome"></span></span>
-        </div>
+        <div class="row my-2" x-data="editDecollo()">
+            <div class="col">
+                <button type="button" class="btn btn-sm btn-primary" @click="menu = true; manifest = false; edit_decollo = false; manifest_vecchio = false; window.location.hash = ''"><span class="material-symbols-outlined">arrow_back</span></button>
+                <button type="button" class="btn btn-sm btn-primary" @click="aggiungiDecollo(manifest_oggi.response.id)">Aggiungi Decollo</button>
+                <button type="button" class="btn btn-sm btn-primary" @click=refreshManifest() id="refresh_manifest"><span class="material-symbols-outlined">refresh</span></button>
+                <a class="btn btn-sm btn-primary"><span class="material-symbols-outlined">edit</span></a>
+                <a class="btn btn-sm btn-danger"><span class="material-symbols-outlined">delete</span></a>
+            </div>
+            <div class="col text-end">
+                <span class="badge text-bg-secondary border"><span class="material-symbols-outlined">school</span> <span x-text="manifest_oggi.response.ip_giornata.nome"></span></span>
+                <span class="badge text-bg-secondary border"><span class="material-symbols-outlined">airlines</span> <span x-text="manifest_oggi.response.pilota.nome"></span> - <span x-text="manifest_oggi.response.aereo.nome"></span></span>
+            </div>
         </div>
     </template>
+    <div class="row my-2">
+        <template x-for="i in manifest_oggi.response.decolli" :key="i.id">
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Decollo <span x-text="i.ordine_decollo"></span></h5>
+                        <div class="btn-group rounded" role="group">
+                        <button :id="'edit_decollo-' + i.id" type="button" class="btn btn-sm btn-outline-primary" @click="menu = false; manifest = false; edit_decollo: true; manifest_vecchio = false; window.location.hash = '#edit_decollo', setDecollo(i.id)"><span class="material-symbols-outlined">edit</span></button>
+                            <button type="button" class="btn btn-sm btn-outline-primary"><span class="material-symbols-outlined">local_gas_station</span></button>
+                            <button type="button" class="btn btn-sm btn-outline-primary"><span class="material-symbols-outlined">flight_takeoff</span></button>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-sm btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span class="material-symbols-outlined">settings</span>
+                                </button>
+                                <ul class="dropdown-menu">
+                                <li><button type="button" class="dropdown-item"><span class="material-symbols-outlined">arrow_back</span> Sposta indietro</button></li>
+                                <li><button type="button" class="dropdown-item"><span class="material-symbols-outlined">arrow_forward</span> Sposta avanti</button></li>
+                                <li><button type="button" class="dropdown-item"><span class="material-symbols-outlined">airlines</span> Cambia Pilota</button></li>
+                                <li><button type="button" class="dropdown-item"><span class="material-symbols-outlined">delete</span> Elimina decollo</button></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <span class="material-symbols-outlined my-2">airlines</span> <span x-text="i.pilota.nome"></span>
+                        <ul class="list-group list-group-flush">
+                        <template x-for="j in i.tandem" :key="j.id">
+                            <li class="list-group-item">
+                                <ul class="list-group list-group-flush">
+                                    <span class="badge text-bg-primary">TANDEM</span>
+                                    <li class="list-group-item list-group-item-primary">
+                                        <span x-text="j.pilota_td.nome"></span>
+                                        <template x-if="j.video_h">
+                                            <span class="badge bg-primary">VIDEO</span>
+                                        </template>
+                                        <template x-if="!j.video_ext">
+                                            <span class="badge bg-primary">FOTO</span>
+                                        </template>
+                                    </li>
+                                    <li class="list-group-item list-group-item-primary" x-text="j.passeggero"></li>
+                                    <template x-if="j.video_ext">
+                                    <li class="list-group-item list-group-item-primary">
+                                        <span x-text="j.videoman.nome"></span>
+                                        <span class="badge bg-primary">VIDEO</span>
+                                        <template x-if="j.foto">
+                                            <span class="badge bg-primary">FOTO</span>
+                                        </template>
+                                    </li>
+                                    </template>
+                                </ul>
+                            </li>
+                        </template>
+                        </ul>
+                        <ul class="list-group list-group-flush">
+                        <template x-for="j in i.aff" :key="j.id">
+                            <li class="list-group-item">
+                                <ul class="list-group list-group-flush">
+                                    <span class="badge text-bg-warning">AFF Liv. <span x-text="j.livello_aff"></span></span>
+                                    <li class="list-group-item list-group-item-warning">
+                                        <span x-text="j.ip_primario.nome"></span>
+                                    </li>
+                                    <li class="list-group-item list-group-item-warning">
+                                        <span x-text="j.allievo.nome"></span>
+                                    </li>
+                                    <template x-if="j.livello_aff < 3">
+                                        <li class="list-group-item list-group-item-warning">
+                                            <span x-text="j.ip_secondario.nome"></span>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </li>
+                        </template>
+                        </ul>
+                        <ul class="list-group list-group-flush">
+                        <template x-for="j in i.paracadutisti" :key="j.id">
+                            <li class="list-group-item">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item">
+                                        <template x-if="j.dl">
+                                            <span class="badge bg-primary">DL</span>
+                                        </template>
+                                        <span x-text="j.paracadutista.nome"></span>
+                                        <span class="badge bg-primary" x-text="j.disciplina.nome"></span>
+                                    </li>
+                                </ul>
+                            </li>
+                        </template>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+</div>
+
+<div id="edit_decollo" x-show="edit_decollo" x-data="getDecollo()">
+    <h4 class="text-center">Modifica Decollo <span x-text="decollo_selezionato.ordine_decollo"></span></h4>
+    <button type="button" class="btn btn-sm btn-primary" @click="menu = true; manifest = false; edit_decollo = false; manifest_vecchio = false; window.location.hash = '#manifest'; unsetDecollo()"><span class="material-symbols-outlined">arrow_back</span></button>
+    <button type="button" class="btn btn-sm btn-primary" @click=refreshDecollo() id="refresh_decollo"><span class="material-symbols-outlined">refresh</span></button>
+    <div class="row my-2">
+    <div class="col mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Decollo <span x-text="decollo_selezionato.ordine_decollo"></span></h5>
+                <ul class="list-group list-group-flush">
+                <template x-for="j in decollo_selezionato.tandem" :key="j.id">
+                    <li class="list-group-item">
+                        <ul class="list-group list-group-flush">
+                            <span class="badge text-bg-primary">TANDEM</span>
+                            <li class="list-group-item list-group-item-primary">
+                                <span>🪂</span> <span x-text="j.pilota_td.nome"></span>
+                                <template x-if="j.video_h">
+                                    <span class="badge bg-primary">VIDEO</span>
+                                </template>
+                                <template x-if="!j.video_ext">
+                                    <span class="badge bg-primary">FOTO</span>
+                                </template>
+                            </li>
+                            <li class="list-group-item list-group-item-primary" x-text="j.passeggero"></li>
+                            <template x-if="j.video_ext">
+                            <li class="list-group-item list-group-item-primary">
+                                <span>📹</span> <span x-text="j.videoman.nome"></span>
+                                <span class="badge bg-primary">VIDEO</span>
+                                <template x-if="j.foto">
+                                    <span class="badge bg-primary">FOTO</span>
+                                </template>
+                            </li>
+                            </template>
+                        </ul>
+                    </li>
+                </template>
+                </ul>
+                <ul class="list-group list-group-flush">
+                <template x-for="j in decollo_selezionato.aff" :key="j.id">
+                    <li class="list-group-item">
+                        <ul class="list-group list-group-flush">
+                            <span class="badge text-bg-warning">AFF Liv. <span x-text="j.livello_aff"></span></span>
+                            <li class="list-group-item list-group-item-warning">
+                                <span>🪂</span> <span x-text="j.ip_primario.nome"></span>
+                            </li>
+                            <li class="list-group-item list-group-item-warning">
+                                <span x-text="j.allievo.nome"></span>
+                            </li>
+                            <template x-if="j.livello_aff < 3">
+                                <li class="list-group-item list-group-item-warning">
+                                    <span>🪂</span> <span x-text="j.ip_secondario.nome"></span>
+                                </li>
+                            </template>
+                        </ul>
+                    </li>
+                </template>
+                </ul>
+                <ul class="list-group list-group-flush">
+                <template x-for="j in decollo_selezionato.paracadutisti" :key="j.id">
+                    <li class="list-group-item">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item">
+                                <template x-if="j.dl">
+                                    <span class="badge bg-primary">DL</span>
+                                </template>
+                                <span x-text="j.paracadutista.nome"></span>
+                                <span class="badge bg-primary" x-text="j.disciplina.nome"></span>
+                            </li>
+                        </ul>
+                    </li>
+                </template>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#aggiungiTDModal" :data-decolloid="decollo_selezionato.id" data-tdid="" id="aggiungiTDBtn">Tandem</button>
+        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#aggiungiAFFModal" :data-decolloid="decollo_selezionato.id" data-affid="" id="aggiungiAFFBtn">AFF</button>
+        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#aggiungiParaModal" :data-decolloid="decollo_selezionato.id" data-paraid="" id="aggiungiParaBtn">Paracadutista</button>
+    </div>
+    </div>
 </div>
 
 <div id="manifest_vecchio" x-show="manifest_vecchio" x-data="manifestStorico()">
     <h4 class="text-center">Giornate effettuate</h4>
-    <button type="button" class="btn btn-sm btn-primary" @click="menu = true; manifest = false; manifest_vecchio = false"><span class="material-symbols-outlined">arrow_back</span></button>
+    <button type="button" class="btn btn-sm btn-primary" @click="menu = true; manifest = false; edit_decollo = false; manifest_vecchio = false; window.location.hash = ''"><span class="material-symbols-outlined">arrow_back</span></button>
     <ul class="nav nav-tabs mt-2" id="myTab" role="tablist">
         <template x-for="(anno, index) in giornate_storico.response.anni" :key="anno">
             <li class="nav-item">
@@ -97,7 +280,7 @@
                             <td x-text="giornata.pilota.nome"></td>
                             <td x-text="giornata.aereo.nome"></td>
                             <td>
-                            <a class="btn btn-sm btn-primary" :href="`/manifest/dettaglio/${giornata.id}`"><span class="material-symbols-outlined">edit</span></a>
+                            <a class="btn btn-sm btn-primary" :href="`/manifest/dettaglio/${giornata.id}`"><span class="material-symbols-outlined">info_i</span></a>
                             </td>
                         </tr>
                     </template>
@@ -142,6 +325,210 @@
             <select class="form-select" id="aereo" x-model="formData.aereo">
                 <template x-for="i in elenco_aerei" :key="i.id">
                 <option :value="i.id" x-text="i.nome"></option>
+                </template>
+            </select>
+            </div>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+            <button type="submit" class="btn btn-primary" :disabled="formLoading" data-bs-dismiss="modal">Conferma</button>
+        </form>
+        </div>
+    </div>
+    </div>
+</div>
+
+<div class="modal fade" id="aggiungiTDModal" tabindex="-1" aria-labelledby="aggiungiTDModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+        <div class="modal-header">
+        <h1 class="modal-title fs-5" id="aggiungiTDModalLabel">Tandem</h1>
+        </div>
+        <div class="modal-body mx-2">
+        <form  x-data="aggiungiTDForm()" @submit.prevent="submitForm">
+            <input type="text" class="form-control" hidden id="para_id" x-model="formData.para_id">
+            <div class="mb-3">
+            <label for="pilota_td" class="form-label">Pilota Tandem</label>
+            <select class="form-select" id="pilota_td" x-model="formData.pilota_td">
+                <template x-for="i in elenco_piloti_td" :key="i.id">
+                    <option :value="i.id">
+                    <template x-if="new Date(i.visita) < new Date()">
+                        <div>
+                        <span>⚠️</span>
+                        <span x-text="i.nome + ' ' + i.cognome + ' '"></span>
+                        </div>
+                    </template>
+                    <template x-if="new Date(i.visita) >= new Date()">
+                        <span x-text="i.nome + ' ' + i.cognome"></span>
+                    </template>
+                    </option>
+                </template>
+            </select>
+            </div>
+            <div class="mb-3">
+                <label for="passeggero" class="form-label">Passeggero Tandem</label>
+                <input type="text" class="form-control" id="passeggero" x-model="formData.passeggero">
+            </div>
+            <label class="form-label mb-3">Opzioni Video</label>
+            <div class="mx-2 mb-3 row">
+                <div class="form-check col">
+                <input type="checkbox" class="form-check-input" id="video_polso" x-model="formData.video_polso">
+                <label class="form-check-label" for="video_polso">Video da Polso</label>
+                </div>
+                <div class="form-check col">
+                <input type="checkbox" class="form-check-input" id="video_ext" x-model="formData.video_ext">
+                <label class="form-check-label" for="video_ext">Video Esterno</label>
+                </div>
+                <div class="form-check col">
+                <input type="checkbox" class="form-check-input" id="foto" x-model="formData.foto">
+                <label class="form-check-label" for="foto">Foto</label>
+                </div>
+            </div>
+            <div class="mb-3" x-show="formData.video_ext">
+            <label for="videoman" class="form-label">Videoman</label>
+            <select class="form-select" id="videoman" x-model="formData.videoman">
+                <template x-for="i in elenco_videoman" :key="i.id">
+                    <option :value="i.id">
+                    <template x-if="new Date(i.visita) < new Date()">
+                        <div>
+                        <span>⚠️</span>
+                        <span x-text="i.nome + ' ' + i.cognome + ' '"></span>
+                        </div>
+                    </template>
+                    <template x-if="new Date(i.visita) >= new Date()">
+                        <span x-text="i.nome + ' ' + i.cognome"></span>
+                    </template>
+                    </option>
+                </template>
+            </select>
+            </div>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+            <button type="submit" class="btn btn-primary" :disabled="formLoading" data-bs-dismiss="modal">Conferma</button>
+        </form>
+        </div>
+    </div>
+    </div>
+</div>
+
+<div class="modal fade" id="aggiungiAFFModal" tabindex="-1" aria-labelledby="aggiungiAFFModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+        <div class="modal-header">
+        <h1 class="modal-title fs-5" id="aggiungiAFFModalLabel">AFF</h1>
+        </div>
+        <div class="modal-body mx-2">
+        <form  x-data="aggiungiAFFForm()" @submit.prevent="submitForm">
+            <input type="text" class="form-control" hidden id="para_id" x-model="formData.para_id">
+            <div class="mb-3">
+            <label for="livello_aff" class="form-label">Livello AFF</label>
+            <select class="form-select" id="livello_aff" x-model="formData.livello_aff">
+                <template x-for="i in livelli_aff" :key="i">
+                    <option :value="i" x-text="i"></option>
+                </template>
+            </select>
+            </div>
+            <div class="mb-3">
+            <label for="ip_primario" class="form-label">Istruttore Primario</label>
+            <select class="form-select" id="ip_primario" x-model="formData.ip_primario">
+                <template x-for="i in elenco_ip_aff" :key="i.id">
+                    <option :value="i.id">
+                    <template x-if="new Date(i.visita) < new Date()">
+                        <div>
+                        <span>⚠️</span>
+                        <span x-text="i.nome + ' ' + i.cognome + ' '"></span>
+                        </div>
+                    </template>
+                    <template x-if="new Date(i.visita) >= new Date()">
+                        <span x-text="i.nome + ' ' + i.cognome"></span>
+                    </template>
+                    </option>
+                </template>
+            </select>
+            </div>
+            <div class="mb-3">
+            <label for="allievo" class="form-label">Allievo</label>
+            <select class="form-select" id="allievo" x-model="formData.allievo">
+                <template x-for="i in elenco_allievi" :key="i.id">
+                    <option :value="i.id">
+                    <template x-if="new Date(i.visita) < new Date()">
+                        <div>
+                        <span>⚠️</span>
+                        <span x-text="i.nome + ' ' + i.cognome + ' '"></span>
+                        </div>
+                    </template>
+                    <template x-if="new Date(i.visita) >= new Date()">
+                        <span x-text="i.nome + ' ' + i.cognome"></span>
+                    </template>
+                    </option>
+                </template>
+            </select>
+            </div>
+            <template x-if="formData.livello_aff <= 3">
+            <div class="mb-3">
+            <label for="ip_secondario" class="form-label">Istruttore Secondario</label>
+            <select class="form-select" id="ip_secondario" x-model="formData.ip_secondario">
+                <template x-for="i in elenco_ip_aff" :key="i.id">
+                    <option :value="i.id">
+                    <template x-if="new Date(i.visita) < new Date()">
+                        <div>
+                        <span>⚠️</span>
+                        <span x-text="i.nome + ' ' + i.cognome + ' '"></span>
+                        </div>
+                    </template>
+                    <template x-if="new Date(i.visita) >= new Date()">
+                        <span x-text="i.nome + ' ' + i.cognome"></span>
+                    </template>
+                    </option>
+                </template>
+            </select>
+            </div>
+            </template>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+            <button type="submit" class="btn btn-primary" :disabled="formLoading" data-bs-dismiss="modal">Conferma</button>
+        </form>
+        </div>
+    </div>
+    </div>
+</div>
+
+<div class="modal fade" id="aggiungiParaModal" tabindex="-1" aria-labelledby="aggiungiParaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+        <div class="modal-header">
+        <h1 class="modal-title fs-5" id="aggiungiParaModalLabel">Paracadutista</h1>
+        </div>
+        <div class="modal-body mx-2">
+        <form  x-data="aggiungiParaForm()" @submit.prevent="submitForm">
+            <input type="text" class="form-control" hidden id="para_id" x-model="formData.para_id">
+            <div class="mb-3">
+            <label for="paracadutista" class="form-label">Paracadutista</label>
+            <select class="form-select" id="paracadutista" x-model="formData.paracadutista">
+                <template x-for="i in elenco_para" :key="i.id">
+                    <option :value="i.id">
+                    <template x-if="new Date(i.visita) < new Date()">
+                        <div>
+                        <span>⚠️</span>
+                        <span x-text="i.nome + ' ' + i.cognome + ' '"></span>
+                        </div>
+                    </template>
+                    <template x-if="new Date(i.visita) >= new Date()">
+                        <span x-text="i.nome + ' ' + i.cognome"></span>
+                    </template>
+                    </option>
+                </template>
+            </select>
+            </div>
+            <template x-for="i in elenco_para">
+                <template x-if="i.id == formData.paracadutista && i.licenza.dl">
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="dl" x-model="formData.dl">
+                        <label class="form-check-label" for="dl">DL</label>
+                    </div>
+                </template>
+            </template>
+            <div class="mb-3">
+            <label for="disciplina" class="form-label">Disciplina</label>
+            <select class="form-select" id="disciplina" x-model="formData.disciplina">
+                <template x-for="i in elenco_discipline" :key="i.id">
+                    <option :value="i.id" x-text="i.nome"></option>
                 </template>
             </select>
             </div>

@@ -14,7 +14,7 @@
     <script src="/static/sidebar.js"></script>
     <div class="d-flex flex-column flex-shrink-0 p-3" style="width: 280px;" x-data="sidebarData()" id="sidebar">
       <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-decoration-none">
-        <strong><span class="fs-4" x-text="data.response.id_enac"></span></strong>
+        <strong><span class="fs-4" x-text="id_enac"></span></strong>
       </a>
       <hr>
       <ul class="nav nav-pills flex-column mb-auto">
@@ -67,12 +67,14 @@
       <hr>
       <div class="dropdown">
         <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-          <strong><span x-text="data.response.username"></span></strong>
+          <strong><span x-text="username"></span></strong>
         </a>
         <ul class="dropdown-menu text-small shadow">
           <li><a class="dropdown-item" href="{{ url_for("account") }}"><span class="material-symbols-outlined">manage_accounts</span> Profilo</a></li>
           <li><a class="dropdown-item" href="{{ url_for("impostazioni") }}"><span class="material-symbols-outlined">settings</span> Impostazioni</a></li>
           <li><a class="dropdown-item" href="{{ url_for("quaderno_tecnico") }}"><span class="material-symbols-outlined">export_notes</span> Quaderno Tecnico</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="{{ url_for("quaderno_tecnico") }}"><span class="material-symbols-outlined">question_mark</span> Aiuto</a></li>
           <li><hr class="dropdown-divider"></li>
           <li><a class="dropdown-item" href="{{ url_for("logout") }}"><span class="material-symbols-outlined">logout</span> Esci</a></li>
         </ul>
