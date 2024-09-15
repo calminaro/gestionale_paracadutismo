@@ -3,6 +3,7 @@ from flask_login import UserMixin, login_user, LoginManager, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm.attributes import flag_modified
 from datetime import datetime
 import configparser
 import requests
@@ -23,7 +24,7 @@ db_type = config.get("Database", "db_type")
 if db_type == "sqlite":
     uri = f"{db_type}:///{config.get("Database", "db_name")}"
 elif db_type == "postgresql":
-    uri = f"{db_type}:///{config.get("Database", "db_user")}:{config.get("Database", "db_password")}@{config.get("Database", "db_host")}:{config.get("Database", "db_port")}/{config.get("Database", "db_name")}"
+    uri = f"{db_type}://{config.get("Database", "db_user")}:{config.get("Database", "db_password")}@{config.get("Database", "db_host")}:{config.get("Database", "db_port")}/{config.get("Database", "db_name")}"
 else:
     app.logger.info("Errore nella configurazione del DB")
     exit()
@@ -86,26 +87,25 @@ class Disciplina(db.Model):
     tipologia = db.Column(db.String(128), nullable=False)
     nome = db.Column(db.String(128), nullable=False)
 
-class Formazione(db.Model):
-    __tablename__ = "formazioni"
-    id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(128), nullable=False)
-    disciplina = db.Column(db.Integer, nullable=False)
-
 class Giornata(db.Model):
     __tablename__ = "giornate"
     id = db.Column(db.Integer, primary_key=True)
     data = db.Column(db.String(128), nullable=False)
     ip_giornata = db.Column(db.Integer, nullable=False)
-    decolli = db.Column(db.JSON, nullable=False)
+    pilota = db.Column(db.Integer, nullable=False)
+    aereo = db.Column(db.Integer, nullable=False)
 
 class Decollo(db.Model):
     __tablename__ = "decolli"
     id = db.Column(db.Integer, primary_key=True)
+    ordine_decollo = db.Column(db.Integer, nullable=False)
+    giornata = db.Column(db.Integer, nullable=False)
+    pilota = db.Column(db.Integer, nullable=False)
     tandem = db.Column(db.JSON, nullable=False)
     aff = db.Column(db.JSON, nullable=False)
     formazioni = db.Column(db.JSON, nullable=False)
     paracadutisti = db.Column(db.JSON, nullable=False)
+    carburante = db.Column(db.JSON, nullable=False)
 
 with app.app_context():
     db.create_all()
@@ -157,11 +157,150 @@ def sidebardata():
 @login_required
 def manifest_oggi():
     giornata = Giornata.query.filter_by(data=str(datetime.now().date())).first()
-    if giornata:
-        giornata = True
-    else:
+    if not giornata:
         giornata = False
+    else:
+        ip_giornata = Paracadutista.query.filter_by(id=int(giornata.ip_giornata)).first()
+        pilota = Pilota.query.filter_by(id=int(giornata.pilota)).first()
+        aereo = Aereo.query.filter_by(id=int(giornata.aereo)).first()
+        tmp_decolli = Decollo.query.filter_by(giornata=int(giornata.id))
+        decolli = []
+        for i in tmp_decolli:
+            tmp_decollo = {
+                "id": i.id,
+                "ordine_decollo": i.ordine_decollo,
+                "pilota": {"id": i.pilota, "nome": Pilota.query.filter_by(id=int(i.pilota)).first().nome},
+                "tandem": i.tandem,
+                "aff": i.aff,
+                "formazioni": i.formazioni,
+                "paracadutisti": i.paracadutisti,
+                "carburante": i.carburante
+                }
+            decolli.append(tmp_decollo)
+        decolli.sort(key=lambda e: e["ordine_decollo"])
+        giornata = {
+            "id": giornata.id,
+            "data": giornata.data,
+            "ip_giornata": {"id": giornata.ip_giornata, "nome": f"{ip_giornata.nome} {ip_giornata.cognome}"},
+            "pilota": {"id": giornata.ip_giornata, "nome": f"{pilota.nome} {pilota.cognome}"},
+            "aereo": {"id": giornata.ip_giornata, "nome": aereo.nome},
+            "decolli": decolli
+            }
     return jsonify({"status": "success", "response": giornata})
+
+@app.route("/manifest_storico")
+@login_required
+def manifest_storico():
+    giornate = {"anni": []}
+    tmp_giornate = Giornata.query.all()
+    for i in tmp_giornate:
+        ip_giornata = Paracadutista.query.filter_by(id=int(i.ip_giornata)).first()
+        pilota = Pilota.query.filter_by(id=int(i.pilota)).first()
+        aereo = Aereo.query.filter_by(id=int(i.aereo)).first()
+        tmp_giornata = {
+            "id": i.id,
+            "data": i.data,
+            "ip_giornata": {"id": i.ip_giornata, "nome": f"{ip_giornata.nome} {ip_giornata.cognome}"},
+            "pilota": {"id": i.ip_giornata, "nome": f"{pilota.nome} {pilota.cognome}"},
+            "aereo": {"id": i.ip_giornata, "nome": aereo.nome}
+            }
+        if i.data[0:4] in giornate["anni"]:
+            giornate[i.data[0:4]].append(tmp_giornata)
+        else:
+            giornate["anni"].append(i.data[0:4])
+            giornate[i.data[0:4]] = []
+            giornate[i.data[0:4]].append(tmp_giornata)
+    return jsonify({"status": "success", "response": giornate})
+
+@app.route("/avvia_giornata", methods=["POST", "DELETE"])
+@login_required
+def avvia_giornata():
+    if request.json["todo"] == "crea":
+        giornata = Giornata.query.filter_by(data=request.json["data"]).first()
+        if giornata:
+            return jsonify({"status": "success", "response": "error"})
+        giornata = Giornata(data=request.json["data"], ip_giornata=request.json["ip_giornata"], pilota=request.json["pilota"], aereo=request.json["aereo"])
+        db.session.add(giornata)
+        db.session.commit()
+        return jsonify({"status": "success", "response": "ok"})
+    if request.json["todo"] == "aggiorna":
+        giornata = Giornata.query.filter_by(data=request.json["data"]).first()
+        if not giornata:
+            return jsonify({"status": "success", "response": "error"})
+        giornata.ip_giornata = request.json["ip_giornata"]
+        giornata.pilota = request.json["pilota"]
+        giornata.aereo = request.json["aereo"]
+        db.session.commit()
+        return jsonify({"status": "success", "response": "ok"})
+    return jsonify({"status": "success", "response": "error"})
+
+@app.route("/edit_decollo", methods=["POST", "DELETE"])
+@login_required
+def edit_decollo():
+    if request.json["todo"] == "crea":
+        giornata = Giornata.query.filter_by(id=request.json["id_giornata"]).first()
+        if not giornata:
+            return jsonify({"status": "success", "response": "error"})
+        tmp_decolli = Decollo.query.filter_by(giornata=giornata.id)
+        tmp_ordine = 0
+        for i in tmp_decolli:
+            if i.ordine_decollo > tmp_ordine:
+                tmp_ordine = i.ordine_decollo
+        tmp_ordine += 1
+        decollo = Decollo(giornata=giornata.id, ordine_decollo=tmp_ordine, pilota=giornata.pilota, tandem=[], aff=[], formazioni=[], paracadutisti=[], carburante=False)
+        db.session.add(decollo)
+        db.session.commit()
+        return jsonify({"status": "success", "response": decollo.id})
+    if request.json["todo"] == "aggiorna":
+        giornata = Giornata.query.filter_by(data=request.json["data"]).first()
+        if not giornata:
+            return jsonify({"status": "success", "response": "error"})
+        giornata.ip_giornata = request.json["ip_giornata"]
+        giornata.pilota = request.json["pilota"]
+        giornata.aereo = request.json["aereo"]
+        db.session.commit()
+        return jsonify({"status": "success", "response": "ok"})
+    if request.json["todo"] == "crea_td":
+        max_id = 0
+        tmp_decollo = Decollo.query.filter_by(id=request.json["decollo_id"]).first()
+        if tmp_decollo.tandem:
+            max_id = max(i['id'] for i in tmp_decollo.tandem)
+        tmp_pilota_td = Paracadutista.query.filter_by(id=request.json["pilota_td"]).first()
+        tmp_videoman = False
+        if request.json["video_ext"]:
+            videoman = Paracadutista.query.filter_by(id=request.json["videoman"]).first()
+            tmp_videoman = {"id": videoman.id, "nome": f"{videoman.nome} {videoman.cognome}"}
+        tandem = {"id": max_id+1, "pilota_td": {"id": tmp_pilota_td.id, "nome": f"{tmp_pilota_td.nome} {tmp_pilota_td.cognome}"}, "passeggero": request.json["passeggero"], "video_polso": request.json["video_polso"], "video_ext": request.json["video_ext"], "foto": request.json["foto"], "videoman": tmp_videoman}
+        tmp_decollo.tandem.append(tandem)
+        flag_modified(tmp_decollo, "tandem")
+        db.session.commit()
+        return jsonify({"status": "success", "response": "ok"})
+    if request.json["todo"] == "crea_aff":
+        max_id = 0
+        tmp_decollo = Decollo.query.filter_by(id=request.json["decollo_id"]).first()
+        if tmp_decollo.aff:
+            max_id = max(i['id'] for i in tmp_decollo.aff)
+        tmp_primario = Paracadutista.query.filter_by(id=request.json["ip_primario"]).first()
+        tmp_allievo = Paracadutista.query.filter_by(id=request.json["allievo"]).first()
+        tmp_secondario = Paracadutista.query.filter_by(id=request.json["ip_secondario"]).first()
+        aff = {"id": max_id+1, "ip_primario": {"id": tmp_primario.id, "nome": f"{tmp_primario.nome} {tmp_primario.cognome}"}, "allievo": {"id": tmp_allievo.id, "nome": f"{tmp_allievo.nome} {tmp_allievo.cognome}"}, "ip_secondario": {"id": tmp_secondario.id, "nome": f"{tmp_secondario.nome} {tmp_secondario.cognome}"}, "livello_aff": request.json["livello_aff"]}
+        tmp_decollo.aff.append(aff)
+        flag_modified(tmp_decollo, "aff")
+        db.session.commit()
+        return jsonify({"status": "success", "response": "ok"})
+    if request.json["todo"] == "crea_para":
+        max_id = 0
+        tmp_decollo = Decollo.query.filter_by(id=request.json["decollo_id"]).first()
+        if tmp_decollo.paracadutisti:
+            max_id = max(i['id'] for i in tmp_decollo.paracadutisti)
+        tmp_para = Paracadutista.query.filter_by(id=request.json["paracadutista"]).first()
+        tmp_disciplina = Disciplina.query.filter_by(id=request.json["disciplina"]).first()
+        paracadutista = {"id": max_id+1, "paracadutista": {"id": tmp_para.id, "nome": f"{tmp_para.nome} {tmp_para.cognome}"}, "disciplina": {"id": tmp_disciplina.id, "nome": tmp_disciplina.nome}, "dl": request.json["dl"]}
+        tmp_decollo.paracadutisti.append(paracadutista)
+        flag_modified(tmp_decollo, "paracadutisti")
+        db.session.commit()
+        return jsonify({"status": "success", "response": "ok"})
+    return jsonify({"status": "success", "response": "error"})
 
 @app.route("/system_option", methods=["GET", "POST"])
 @login_required
@@ -430,48 +569,6 @@ def disciplina(style_id):
         "tipo": i.tipologia
         }
     return jsonify({"status": "success", "response": disciplina})
-
-@app.route("/formazioni", methods=["GET", "POST", "DELETE"])
-@login_required
-def formazioni():
-    if request.method == "DELETE":
-        if request.json["group_id"] != "":
-            tmp_formazione = Formazione.query.filter_by(id=int(request.json["group_id"]))[0]
-            db.session.delete(tmp_formazione)
-            db.session.commit()
-            return jsonify({"status": "success", "response": "ok"})
-    if request.method == "POST":
-        if request.json["group_id"] != "":
-            tmp_formazione = Formazione.query.filter_by(id=int(request.json["group_id"]))[0]
-            tmp_formazione.nome=request.json["nome"]
-            tmp_formazione.disciplina=int(request.json["disciplina"])
-            db.session.commit()
-            return jsonify({"status": "success", "response": "ok"})
-        tmp_formazione = Formazione(nome=request.json["nome"], disciplina=int(request.json["disciplina"]))
-        db.session.add(tmp_formazione)
-        db.session.commit()
-        return jsonify({"status": "success", "response": "ok"})
-    tmp_formazioni = Formazione.query.all()
-    elenco_formazioni = []
-    for i in tmp_formazioni:
-        tmp_formazione = {
-            "id": i.id,
-            "nome": i.nome,
-            "disciplina": Disciplina.query.filter_by(id=int(i.disciplina))[0].nome
-            }
-        elenco_formazioni.append(tmp_formazione)
-    return jsonify({"status": "success", "response": elenco_formazioni})
-
-@app.route("/formazione/<group_id>")
-@login_required
-def formazione(group_id):
-    i = Formazione.query.filter_by(id=int(group_id))[0]
-    tmp_formazione = {
-        "id": i.id,
-        "nome": i.nome,
-        "disciplina": i.disciplina
-        }
-    return jsonify({"status": "success", "response": tmp_formazione})
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
